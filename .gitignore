@@ -1,0 +1,10 @@
+# Trained model file - it's ~300MB, way too big for git.
+# Regenerate it any time by running: python3 03_train_model.py
+*.pkl
+
+# Python
+__pycache__/
+*.pyc
+
+# OS junk
+.DS_Store
