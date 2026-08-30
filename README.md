@@ -45,7 +45,7 @@ Danceability, energy, and speechiness ended up mattering most for telling genres
 
 - Use the finer-grained `playlist_subgenre` labels instead, harder problem
 - Try XGBoost or LightGBM and see if it beats the Random Forest
-- Do this properly with cross-validation instead of one fixed train/test split
+- Do this properly with cross-validation instead of one fixed train/test split (80/20)
 
 ## Tools used
 
