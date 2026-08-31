@@ -12,7 +12,12 @@ Why Random Forest?
 """
 
 import pandas as pd
-from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val_score
+from sklearn.model_selection import (
+    train_test_split,
+    StratifiedKFold,
+    cross_val_score,
+    RandomizedSearchCV,
+)
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 import matplotlib.pyplot as plt
@@ -57,16 +62,56 @@ print(f"  per fold: {[round(s, 3) for s in cv_scores]}")
 print(f"  mean: {cv_scores.mean():.3f} (+/- {cv_scores.std():.3f})")
 print()
 
-# 4. Train the final model on the full training set
-model = RandomForestClassifier(n_estimators=200, random_state=42, n_jobs=-1)
-model.fit(X_train, y_train)
+# 4. Now actually use that cross-validation setup for something: search over Random Forest
+#    hyperparameters instead of just going with the library defaults (200 trees, no depth
+#    limit, etc). Every candidate combination gets evaluated the same 5-fold way as above,
+#    so "best" here means best average across folds, not best on one lucky split.
+#    RandomizedSearchCV instead of an exhaustive GridSearchCV because the full grid below
+#    is 4 x 4 x 3 x 3 x 3 = 432 combinations x 5 folds = 2,160 model fits, way more than
+#    needed to find a good combination and way too slow to run on a laptop. Sampling 6
+#    random combinations x 5 folds = 30 fits instead gets most of the benefit in a couple
+#    of minutes rather than an afternoon.
+param_distributions = {
+    "n_estimators": [100, 150, 200, 250],
+    "max_depth": [10, 20, 30, 40],
+    "min_samples_split": [2, 5, 10],
+    "min_samples_leaf": [1, 2, 4],
+    "max_features": ["sqrt", "log2", None],
+}
 
-# 5. Evaluate on the held-out test set - songs neither training nor cross-validation
-#    above ever saw, this is the real "how does it do on brand new songs" number.
+search = RandomizedSearchCV(
+    RandomForestClassifier(random_state=42, n_jobs=1),
+    param_distributions=param_distributions,
+    n_iter=6,
+    cv=cv,
+    scoring="accuracy",
+    random_state=42,
+    n_jobs=-1,
+    verbose=1,
+)
+search.fit(X_train, y_train)
+
+print("Best hyperparameters found:")
+print(f"  {search.best_params_}")
+print(f"Best cross-validation accuracy: {search.best_score_:.3f}")
+print(
+    f"(vs {cv_scores.mean():.3f} for the untuned defaults above, "
+    f"{(search.best_score_ - cv_scores.mean()) * 100:+.1f} percentage points)"
+)
+print()
+
+# search.best_estimator_ has already been refit on the *entire* training set using the
+# winning hyperparameters (RandomizedSearchCV does this automatically, refit=True by
+# default), so there's no separate "now train the final model" step needed here.
+model = search.best_estimator_
+
+# 5. Evaluate on the held-out test set - songs neither training, cross-validation, nor the
+#    hyperparameter search above ever saw, this is the real "how does it do on brand new
+#    songs" number.
 y_pred = model.predict(X_test)
 accuracy = accuracy_score(y_test, y_pred)
 
-print(f"Held-out test accuracy: {accuracy:.3f} ({accuracy*100:.1f}%)")
+print(f"Held-out test accuracy (tuned model): {accuracy:.3f} ({accuracy*100:.1f}%)")
 print()
 print("Full classification report:")
 print(classification_report(y_test, y_pred))
@@ -93,6 +138,6 @@ plt.tight_layout()
 plt.savefig("feature_importance.png", dpi=150)
 print("Saved feature_importance.png")
 
-# 8. Save the trained model so it can be reused without retraining
+# 8. Save the tuned model so it can be reused without retraining/re-searching
 joblib.dump(model, "genre_classifier_model.pkl")
 print("Saved genre_classifier_model.pkl")
