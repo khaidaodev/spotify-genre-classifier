@@ -27,6 +27,8 @@ python3 03_train_model.py
 
 A Random Forest classifier (basically a big group of decision trees that each vote on the answer, 200 of them here), trained on an 80/20 split, so the score below is on songs the model never saw while training.
 
+Also ran 5-fold cross-validation on the training set before touching the test set at all. The problem with just one fixed 80/20 split is the accuracy you get depends partly on luck, which songs happened to land in the test set that time round. Cross-validation splits the training data 5 ways and rotates which chunk gets held out, so you get 5 accuracy readings instead of 1: 55.2% on average, +/- 0.6% between folds. That's really close to the test score below, so the 80/20 split wasn't a fluke, the model's genuinely landing around mid-50s.
+
 Test accuracy: 55.6%. Doesn't sound huge on its own, but random guessing across 6 genres would only get you about 16.7%, so this is roughly 3.3x better than just guessing.
 
 ![Confusion matrix](confusion_matrix.png)
@@ -45,7 +47,7 @@ Danceability, energy, and speechiness ended up mattering most for telling genres
 
 - Use the finer-grained `playlist_subgenre` labels instead, harder problem
 - Try XGBoost or LightGBM and see if it beats the Random Forest
-- Do this properly with cross-validation instead of one fixed train/test split (80/20)
+- Now that cross-validation's actually wired in, use it properly, run a grid/random search over Random Forest hyperparameters (tree depth, number of trees, min samples per split) instead of just the defaults
 
 ## Tools used
 
