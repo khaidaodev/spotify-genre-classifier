@@ -12,7 +12,7 @@ Why Random Forest?
 """
 
 import pandas as pd
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val_score
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 import matplotlib.pyplot as plt
@@ -32,21 +32,41 @@ X = df[FEATURES]
 y = df["playlist_genre"]
 
 # 3. Split into training data (80%) and test data (20%)
-#    The model never sees the test set while training - that's how we get
-#    an honest score of how well it generalises to new songs.
+#    The model never sees the test set during training or cross-validation below -
+#    that's how we get an honest score of how well it generalises to new songs.
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42, stratify=y
 )
 
-# 4. Train the model
+# 3.5 Cross-validate on the training set first, before touching the test set at all.
+#    One fixed 80/20 split only gives one accuracy number, and that number depends
+#    partly on which songs happened to land in the test set that time, a lucky or
+#    unlucky split can make the model look better or worse than it really is.
+#    5-fold cross-validation instead splits the training data into 5 chunks, trains on
+#    4 of them and evaluates on the 5th, five times over with a different chunk held out
+#    each time, so every training song gets used for evaluation exactly once. Averaging
+#    across folds gives a steadier estimate, and the spread between folds shows how much
+#    that estimate can actually be trusted.
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+cv_scores = cross_val_score(
+    RandomForestClassifier(n_estimators=200, random_state=42, n_jobs=-1),
+    X_train, y_train, cv=cv, scoring="accuracy", n_jobs=-1,
+)
+print("5-fold cross-validation accuracy (training set only):")
+print(f"  per fold: {[round(s, 3) for s in cv_scores]}")
+print(f"  mean: {cv_scores.mean():.3f} (+/- {cv_scores.std():.3f})")
+print()
+
+# 4. Train the final model on the full training set
 model = RandomForestClassifier(n_estimators=200, random_state=42, n_jobs=-1)
 model.fit(X_train, y_train)
 
-# 5. Evaluate on the held-out test set
+# 5. Evaluate on the held-out test set - songs neither training nor cross-validation
+#    above ever saw, this is the real "how does it do on brand new songs" number.
 y_pred = model.predict(X_test)
 accuracy = accuracy_score(y_test, y_pred)
 
-print(f"Test accuracy: {accuracy:.3f} ({accuracy*100:.1f}%)")
+print(f"Held-out test accuracy: {accuracy:.3f} ({accuracy*100:.1f}%)")
 print()
 print("Full classification report:")
 print(classification_report(y_test, y_pred))
