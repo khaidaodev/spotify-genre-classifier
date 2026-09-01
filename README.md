@@ -51,6 +51,10 @@ Tempo, speechiness, and danceability came out as the most important features for
 - Try XGBoost or LightGBM and see if it beats the tuned Random Forest
 - Widen the hyperparameter search (more combinations, wider ranges) now that the pipeline for it exists, this run only checked 6 combinations to keep it running in a couple of minutes
 
+## Testing and git
+
+I'll be honest, this one doesn't have a test suite, it's the smallest of my three projects and I leaned on cross-validation and just checking the numbers by hand instead of writing pytest tests for it. The commits still track real steps though, baseline model, then cross-validation as a sanity check, then the hyperparameter search. Testing's the first thing I'd add if I kept building this one out.
+
 ## Tools used
 
 Python, pandas, scikit-learn, matplotlib, seaborn.
